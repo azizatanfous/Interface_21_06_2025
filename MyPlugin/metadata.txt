@@ -1,0 +1,7 @@
+[general]
+name=MyPlugin
+description=Example plugin that processes spatial data and loads layers into QGIS.
+version=1.0
+qgisMinimumVersion=3.0
+author=Your Name
+email=your.email@example.com
