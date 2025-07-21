@@ -1,0 +1,7 @@
+[general]
+name=UrbanFlammableLoader
+description=Crop urban and flammable layers by selected district, municipality, and parish in Portugal
+version=1.4
+author=Aziza
+qgisMinimumVersion=3.16
+email=aziza@example.com
