@@ -18,9 +18,23 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMessageBox,
 )
+from PyQt5.QtWidgets import QGroupBox
+from PyQt5.QtWidgets import QStackedWidget
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QFormLayout, QGroupBox, QSpinBox, QDoubleSpinBox,
+    QAbstractSpinBox, QLabel, QCheckBox, QLineEdit, QPushButton, QStackedWidget,
+    QScrollArea
+)
+from PyQt5.QtCore import Qt
+
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtCore import Qt, QTimer
-
+from PyQt5.QtWidgets import (
+    QWidget, QLabel, QLineEdit, QPushButton, QComboBox,
+    QDoubleSpinBox, QAbstractSpinBox, QGridLayout, QSizePolicy
+)
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt
 
 class ParameterDialog(QDialog):
     """
@@ -37,7 +51,7 @@ class ParameterDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Fire Management Parameters")
+        self.setWindowTitle("Interface Parameters")
         self.setMinimumWidth(550)
         self.setWindowIcon(QIcon(':/icons/fire.png'))
 
@@ -55,7 +69,9 @@ class ParameterDialog(QDialog):
 
         # Introduction label
         intro = QLabel(
-            "Configure fire-management plugin parameters. Make sure each field is set correctly before proceeding.",
+            "Set the parameters below to configure the interface.\n"
+            "These values are used to create direct and indirect interfaces, "
+            "in order to assess the exposure of flammable areas to nearby urban zones.",
             parent=self
         )
         intro.setWordWrap(True)
@@ -65,7 +81,7 @@ class ParameterDialog(QDialog):
         self.tabs = QTabWidget(self)
         self._create_tab1()
         self._create_tab2()
-        self._create_tab3()
+
 
         # Buttons
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self)
@@ -78,135 +94,185 @@ class ParameterDialog(QDialog):
         layout.addWidget(self.tabs)
         layout.addWidget(buttons)
 
+
     def _create_tab1(self):
         page = QWidget()
-        form = QFormLayout(page)
+        grid = QGridLayout(page)
 
-        # Input folder
-        self.inputFolderEdit = QLineEdit(page)
+        # ────────────────────────────────
+        # 📂 Input Folder
+        # ────────────────────────────────
+        grid.addWidget(QLabel("📂 Input Folder:"), 0, 0)
+        self.inputFolderEdit = QLineEdit()
         self.inputFolderEdit.setToolTip("Directory containing input data.")
-        browseInput = QPushButton("Browse...", page)
+        self.inputFolderEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        browseInput = QPushButton("Browse...")
         browseInput.setIcon(QIcon(':/icons/folder.png'))
         browseInput.setToolTip("Select input folder")
         browseInput.clicked.connect(self._browse_input)
-        h1 = QHBoxLayout(); h1.addWidget(self.inputFolderEdit); h1.addWidget(browseInput)
-        form.addRow("INPUT_FOLDER:", h1)
 
-        # Output folder
-        self.outputFolderEdit = QLineEdit(page)
+        grid.addWidget(self.inputFolderEdit, 0, 1)
+        grid.addWidget(browseInput, 0, 2)
+
+        # ────────────────────────────────
+        # 📁 Output Folder
+        # ────────────────────────────────
+        grid.addWidget(QLabel("📁 Output Folder:"), 1, 0)
+        self.outputFolderEdit = QLineEdit()
         self.outputFolderEdit.setToolTip("Directory for saving results.")
-        browseOutput = QPushButton("Browse...", page)
+        self.outputFolderEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        browseOutput = QPushButton("Browse...")
         browseOutput.setIcon(QIcon(':/icons/folder.png'))
         browseOutput.setToolTip("Select output folder")
         browseOutput.clicked.connect(self._browse_output)
-        h2 = QHBoxLayout(); h2.addWidget(self.outputFolderEdit); h2.addWidget(browseOutput)
-        form.addRow("OUTPUT_FOLDER:", h2)
 
-        # Mode
-        self.optionCombo = QComboBox(page)
-        self.optionCombo.addItems(["altorisco", "todos"]);
-        self.optionCombo.setToolTip("Processing mode")
-        form.addRow("Option:", self.optionCombo)
+        grid.addWidget(self.outputFolderEdit, 1, 1)
+        grid.addWidget(browseOutput, 1, 2)
 
-        # Coordinates
-        self.x0DoubleSpin = QDoubleSpinBox(page)
-        self.x0DoubleSpin.setRange(-1e9, 1e9); self.x0DoubleSpin.setValue(-98407.00)
-        self.x0DoubleSpin.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        # ────────────────────────────────
+        # ⚙️ Processing Mode
+        # ────────────────────────────────
+        grid.addWidget(QLabel("⚙️ Processing Mode:"), 2, 0)
+        self.optionCombo = QComboBox()
+        self.optionCombo.addItems(["altorisco", "todos"])
+        self.optionCombo.setToolTip("Select the type of processing to apply.")
+        self.optionCombo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        grid.addWidget(self.optionCombo, 2, 1, 1, 2)
+
+        # ────────────────────────────────
+        # 📍 Coordinates
+        # ────────────────────────────────
+        grid.addWidget(QLabel("📍 X Coordinate (x0):"), 3, 0)
+        self.x0DoubleSpin = QDoubleSpinBox()
+        self.x0DoubleSpin.setRange(-1e9, 1e9)
+        self.x0DoubleSpin.setValue(-98407.00)
         self.x0DoubleSpin.setToolTip("X-origin coordinate")
-        form.addRow("x0:", self.x0DoubleSpin)
+        self.x0DoubleSpin.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        grid.addWidget(self.x0DoubleSpin, 3, 1, 1, 2)
 
-        self.y0DoubleSpin = QDoubleSpinBox(page)
-        self.y0DoubleSpin.setRange(-1e9, 1e9); self.y0DoubleSpin.setValue(-102297.80)
-        self.y0DoubleSpin.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        grid.addWidget(QLabel("📍 Y Coordinate (y0):"), 4, 0)
+        self.y0DoubleSpin = QDoubleSpinBox()
+        self.y0DoubleSpin.setRange(-1e9, 1e9)
+        self.y0DoubleSpin.setValue(-102297.80)
         self.y0DoubleSpin.setToolTip("Y-origin coordinate")
-        form.addRow("y0:", self.y0DoubleSpin)
+        self.y0DoubleSpin.setButtonSymbols(QAbstractSpinBox.NoButtons)
+        grid.addWidget(self.y0DoubleSpin, 4, 1, 1, 2)
 
-        # Pick-point button
-        self.pickPointBtn = QPushButton("Pick point", page)
-        self.pickPointBtn.setToolTip("Click on the map to choose x0/y0")
-        form.addRow("", self.pickPointBtn)
-        
+        # 🖱️ Pick Point
+        self.pickPointBtn = QPushButton("🖱️ Pick Point")
+        self.pickPointBtn.setToolTip("Click on the map canvas to choose x0/y0 coordinates.")
+        self.pickPointBtn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        grid.addWidget(self.pickPointBtn, 5, 0, 1, 3, alignment=Qt.AlignCenter)
+
+        page.setLayout(grid)
         self.tabs.addTab(page, "General")
 
     def _create_tab2(self):
         page = QWidget()
-        form = QFormLayout(page)
-        for name, default in [
-            ("CREATE_INTERFACE", True), ("TESTIDX", True),
-            ("READ", True), ("MAIN_ALGO", True),
-            ("SELECT", True), ("SAVE", True)
-        ]:
-            cb = QCheckBox(name, page)
-            cb.setChecked(default)
-            cb.setToolTip(f"Enable {name.lower().replace('_', ' ')} stage")
-            setattr(self, f"{name}Check", cb)
-            form.addRow(cb)
-        self.tabs.addTab(page, "Parameters")
+        main_layout = QVBoxLayout(page)
+        self.sub_tab_stack = QStackedWidget(page)
 
-    def _create_tab3(self): 
-        page = QWidget()
-        form = QFormLayout(page)
+        # -------- Sub-tab 1: Numeric Constants (Scrollable) --------
+        numeric_scroll_area = QScrollArea(page)
+        numeric_scroll_area.setWidgetResizable(True)
+        numeric_container = QWidget()
+        numeric_layout = QVBoxLayout(numeric_container)
 
-        # Numeric constants
+        numeric_group = QGroupBox("Numeric Constants", numeric_container)
+        numeric_form_layout = QFormLayout(numeric_group)
+
         constants = [
-            ("D", 0, 1_000_000, 500),
-            ("d", 0, 1_000_000, 500),
-            ("K", 1, 1000, 60),
-            ("KF", 1, 1000, 60),
-            ("limiar", 0, 100, 1.05),
-            ("limiartheta", 0, 360, 60),
-            ("QT", 0, 100, 5),
-            ("MAXDIST", 0, 1_000_000, 0),
-            ("tolerance", 0, 10_000, 3),
-            ("KDTREE_DIST_UPPERBOUND", 0, 1_000_000, 500),
-            ("d_box", 0, 100_000, 2500),
-            ("bigN", 0, 1_000_000_000, 10**6),
-            ("smallN", 0, 1, 1e-6),
-            ("POSVALUE", 0, 1_000_000, 9999),
-            ("NEGVALUE", -1_000_000, 0, -1),
+            ("KDTREE_DIST_UPPERBOUND", 0, 1_000_000, 500, "Maximum distance allowed in KDTree nearest neighbor search"),
+            ("d_box", 0, 100_000, 500, "Box radius around central point to filter data and generate plots"),
+            ("K", 1, 1000, 3, "Number of flammable neighbors to explore from each urban point"),
+            ("KF", 1, 1000, 5, "Number of urban neighbors to explore from each selected flammable point"),
+            ("limiar", 0, 100, 1.05, "Threshold to validate triangle inequality in protection logic"),
+            ("limiartheta", 0, 360, 60, "Maximum angle allowed for a protection segment to be considered valid"),
+            ("QT", 0, 100, 5, "Minimum side contribution to the triangle perimeter (in percent)"),
+            ("MAXDIST", 0, 1_000_000, 0, "Maximum distance between urban vertices (0 means do not densify)"),
+            ("tolerance", 0, 10_000, 3, "Distance tolerance for matching and cleaning geometries"),
+            ("bigN", 0, 1_000_000_000, 10**6, "Large constant used to represent 'infinity' in comparisons"),
+            ("smallN", 0, 1, 1e-6, "Small constant to avoid division by zero or detect negligible differences"),
+            ("POSVALUE", 0, 1_000_000, 9999, "Large positive value used as a placeholder or for flagging"),
+            ("NEGVALUE", -1_000_000, 0, -1, "Negative value used to mark invalid or missing data"),
         ]
-        for name, mn, mx, val in constants:
+
+        for name, mn, mx, val, tooltip in constants:
+            label = QLabel(f"<b>{name}</b>: {tooltip}", numeric_group)
+            label.setWordWrap(True)
+            numeric_form_layout.addRow(label)
+
             if isinstance(val, float):
-                spin = QDoubleSpinBox(page)
+                spin = QDoubleSpinBox(numeric_group)
                 spin.setRange(mn, mx)
+                spin.setDecimals(8)
                 spin.setValue(val)
                 setattr(self, f"{name}DoubleSpin", spin)
             else:
-                spin = QSpinBox(page)
+                spin = QSpinBox(numeric_group)
                 spin.setRange(mn, mx)
                 spin.setValue(val)
                 setattr(self, f"{name}Spin", spin)
+
             spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
-            spin.setToolTip(f"Set {name} value")
-            form.addRow(f"{name}:", spin)
+            spin.setToolTip(tooltip)
+            numeric_form_layout.addRow("Value:", spin)
 
-        # Quality factor (Q)
-        self.QSpin = QDoubleSpinBox(page)
-        self.QSpin.setRange(0.0, 1.0)
-        self.QSpin.setSingleStep(0.01)
-        self.QSpin.setValue(0.1)
-        self.QSpin.setButtonSymbols(QAbstractSpinBox.NoButtons)
-        self.QSpin.setToolTip("Quality factor")
-        form.addRow("Q:", self.QSpin)
+        numeric_layout.addWidget(numeric_group)
 
-        # Variables
+        next_btn = QPushButton("Next ➡", numeric_container)
+        next_btn.clicked.connect(lambda: self.sub_tab_stack.setCurrentIndex(1))
+        numeric_layout.addWidget(next_btn, alignment=Qt.AlignRight)
+
+        numeric_scroll_area.setWidget(numeric_container)
+        self.sub_tab_stack.addWidget(numeric_scroll_area)
+
+        # -------- Sub-tab 2: Attribute Variables (Scrollable) --------
+        attr_scroll_area = QScrollArea(page)
+        attr_scroll_area.setWidgetResizable(True)
+        attr_container = QWidget()
+        attr_layout = QVBoxLayout(attr_container)
+
+        attr_group = QGroupBox("Attribute Variables", attr_container)
+        attr_form_layout = QFormLayout(attr_group)
+
         vars_ = [
-            ("ADDVAR", False, "NEWVAR", "fid_1"),
-            ("ADDVAR2", False, "NEWVAR2", "CorePC"),
-            ("ADDFLAMVAR", False, "NEWFLAMVAR", "idflam"),
-            ("ADDFLAMVAR2", False, "NEWFLAMVAR2", "FuelRisk"),
+            ("ADDVAR", False, "NEWVAR", "fid_1", "Include an additional urban attribute (e.g., district) in interface output"),
+            ("ADDVAR2", False, "NEWVAR2", "CorePC", "Include a second urban attribute in interface output"),
+            ("ADDFLAMVAR", False, "NEWFLAMVAR", "idflam", "Include an additional flammable attribute in output (e.g., feature ID)"),
+            ("ADDFLAMVAR2", False, "NEWFLAMVAR2", "FuelRisk", "Include a second flammable attribute in output (e.g., risk level)"),
         ]
-        for chk, checked, ed, default in vars_:
-            c = QCheckBox(chk, page)
-            c.setChecked(checked)
-            c.setToolTip(f"Enable {chk.lower()}")
-            e = QLineEdit(default, page)
-            e.setToolTip(f"Name for {chk.lower()}")
-            setattr(self, f"{chk}Check", c)
-            setattr(self, f"{ed}Edit", e)
-            form.addRow(c, e)
 
-        self.tabs.addTab(page, "Constants")
+        for checkbox_name, default, var_name, var_default, tooltip in vars_:
+            label = QLabel(f"<b>{checkbox_name}</b>: {tooltip}", attr_group)
+            label.setWordWrap(True)
+            attr_form_layout.addRow(label)
+
+            checkbox = QCheckBox(attr_group)
+            checkbox.setChecked(default)
+            setattr(self, f"{checkbox_name}Check", checkbox)
+
+            line_edit = QLineEdit(var_default, attr_group)
+            setattr(self, f"{var_name}Edit", line_edit)
+
+            attr_form_layout.addRow("Activate:", checkbox)
+            attr_form_layout.addRow("Attribute Name:", line_edit)
+
+        attr_layout.addWidget(attr_group)
+
+        back_btn = QPushButton("⬅ Back", attr_container)
+        back_btn.clicked.connect(lambda: self.sub_tab_stack.setCurrentIndex(0))
+        attr_layout.addWidget(back_btn, alignment=Qt.AlignLeft)
+
+        attr_scroll_area.setWidget(attr_container)
+        self.sub_tab_stack.addWidget(attr_scroll_area)
+
+        # Add the stack to the main layout
+        main_layout.addWidget(self.sub_tab_stack)
+        page.setLayout(main_layout)
+        self.tabs.addTab(page, "Parameters")
 
 
     def _browse_input(self):
@@ -238,8 +304,6 @@ class ParameterDialog(QDialog):
             "option": self.optionCombo.currentText(),
             "x0": self.x0DoubleSpin.value(),
             "y0": self.y0DoubleSpin.value(),
-            "D": self.DSpin.value(),
-            "d": self.dSpin.value(),
             "K": self.KSpin.value(),
             "KF": self.KFSpin.value(),
             "limiar": self.limiarDoubleSpin.value(),
@@ -261,11 +325,4 @@ class ParameterDialog(QDialog):
             "NEWFLAMVAR": self.NEWFLAMVAREdit.text(),
             "ADDFLAMVAR2": self.ADDFLAMVAR2Check.isChecked(),
             "NEWFLAMVAR2": self.NEWFLAMVAR2Edit.text(),
-            "Q": self.QSpin.value(),
-            "CREATE_INTERFACE": self.CREATE_INTERFACECheck.isChecked(),
-            "TESTIDX": self.TESTIDXCheck.isChecked(),
-            "READ": self.READCheck.isChecked(),
-            "MAIN_ALGO": self.MAIN_ALGOCheck.isChecked(),
-            "SELECT": self.SELECTCheck.isChecked(),
-            "SAVE": self.SAVECheck.isChecked(),
         }
