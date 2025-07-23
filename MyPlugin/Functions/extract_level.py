@@ -47,4 +47,3 @@ def extract_vertices(geodf):
     
     df = pd.DataFrame(data, columns=['x', 'y', 'L1', 'L2', 'L3'])
     return df
-

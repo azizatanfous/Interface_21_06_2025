@@ -15,6 +15,3 @@ def azimuthVF(xV, yV, xF, yF):
     is_same = (dx == 0) & (dy == 0)
     az[is_same] = 360  # points are identical
     return az
-
-
-

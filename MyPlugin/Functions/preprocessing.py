@@ -25,33 +25,27 @@ def promote_to_multipolygon(gdf):
     return gdf
 
 
-# Processes the  GeoDataFrame 
 def process_flammables(flam, BOX):
     """
     Input:
-    flam (GeoDataFrame): The input GeoDataFrame containing  geometries.
-    bounding_box (dic): The bounding box for cropping.
+    flam (GeoDataFrame): The input GeoDataFrame containing geometries.
+    BOX (dict): The bounding box for selection.
 
     Output:
-    GeoDataFrame: The processed GeoDataFrame with MultiPolygon geometries.
+    GeoDataFrame: The processed GeoDataFrame with only Polygons (or optionally MultiPolygons) that intersect the bounding box.
     """
-    
+    # Create the bounding box polygon
     bounding_polygon = box(BOX["xmin"], BOX["ymin"], BOX["xmax"], BOX["ymax"])
-    flam = flam.clip(bounding_polygon)  # Crop the GeoDataFrame 
-
-    auxflam = flam[flam.geom_type == "MultiPolygon"]  # Select MultiPolygons 
-    polyflam = auxflam.explode(index_parts=False)  # Convert MultiPolygons to individual Polygons
-
-    geomcolname = flam.geometry.name  
-    newgeomcolname = polyflam.geometry.name  
-
-    if newgeomcolname != geomcolname:
-        polyflam = polyflam.rename_geometry(geomcolname) 
-
-    flam = pd.concat([flam[flam.geom_type == "Polygon"], polyflam], ignore_index=True)  # Merge Polygons with exploded ones
-    flam["geometry"] = flam["geometry"].apply(lambda geom: MultiPolygon([geom]) if geom.geom_type == "Polygon" else geom)  # Convert Polygons to MultiPolygons
-
-    return flam  
+    # Explode all MultiPolygons into individual Polygons (preserves topology)
+    exploded = flam.explode(index_parts=False)#[1]
+    # Select only the Polygons that intersect the bounding box
+    intersects = exploded.intersects(bounding_polygon)
+    result = exploded[intersects].copy()
+    # If you want to group back into MultiPolygons (optional, may not be needed)
+    # result["idx_group"] = result.index.get_level_values(0)  # Use the original index for grouping
+    # result = result.dissolve(by="idx_group", as_index=False)
+    # Note: Dissolve may not preserve all attributes, so only use if necessary
+    return result
 
 # Removes duplicate
 def clean_and_reindex(df, part_col, vert_col):
@@ -72,3 +66,8 @@ def clean_and_reindex(df, part_col, vert_col):
 
     return df  
 
+def insert_zero_at_the_beginning_of_1D_array(arr):
+    return np.insert(arr, 0, 0)
+    
+def insert_bigN_at_the_beginning_of_1D_array(arr):
+    return np.insert(arr, 0, 10**6)

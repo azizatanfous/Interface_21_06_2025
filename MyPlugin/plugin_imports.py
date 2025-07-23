@@ -11,4 +11,6 @@ from .Functions.dot_product import *
 from .Functions.cross_product import *
 from .Functions.ftype import *
 from .Functions.azimuthVF_function import *
-from .Functions.Drawing_plot import *
+from .Functions.convert_xy_into_urban_closest_vertex import *
+from .Functions.extract_urb_vertices_and_buffered import *
+

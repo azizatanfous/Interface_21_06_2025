@@ -57,5 +57,3 @@ def idxneigh(mat, idxviz, IN):
             idxnext.append(idx)
     
     return {'idxprev': idxprev, 'idxnext': idxnext}
-
-
