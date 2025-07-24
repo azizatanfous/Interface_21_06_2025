@@ -2,15 +2,11 @@ import os
 import sys
 import random
 import pandas as pd
-
-from PyQt5.QtCore import QVariant
-from PyQt5.QtGui import QColor
-from qgis.core import QgsRuleBasedRenderer, QgsSymbol
 from qgis.core import (
-    QgsFeature, QgsGeometry, QgsVectorLayer, QgsField, QgsSymbol,
-    QgsCategorizedSymbolRenderer, QgsRendererCategory, QgsPointXY,
-    QgsWkbTypes
+    QgsProject, QgsRasterLayer, QgsMarkerSymbol, QgsSingleSymbolRenderer, QgsVectorLayer
 )
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import QVariant
 from PyQt5.QtGui import QColor
 from qgis.PyQt.QtCore import QCoreApplication
@@ -19,16 +15,17 @@ from qgis.PyQt.QtWidgets import (
     QSpinBox, QDoubleSpinBox, QCheckBox, QPushButton, QComboBox,
     QFileDialog, QDialogButtonBox
 )
+from qgis.PyQt.QtGui import QColor  # needed for some versions of QGIS
 
 from qgis.core import (
-    QgsVectorLayer, QgsField, QgsFeature, QgsGeometry, QgsPointXY,
-    QgsProject, QgsRasterLayer, QgsStyle, QgsSymbol,
-    QgsRendererCategory, QgsCategorizedSymbolRenderer
+    QgsFeature, QgsGeometry, QgsVectorLayer, QgsField, QgsSymbol,
+    QgsCategorizedSymbolRenderer, QgsRendererCategory, QgsPointXY,
+    QgsWkbTypes, QgsProject, QgsRasterLayer, QgsStyle,
+    QgsRuleBasedRenderer
 )
-from qgis.core import QgsRuleBasedRenderer, QgsSymbol, QgsRendererCategory
-
-from qgis.PyQt.QtGui import QColor
 from qgis.gui import QgsMapToolEmitPoint
+import time
+from qgis.utils import iface
 
 from .interface_dialogue import ParameterDialog
 
@@ -208,7 +205,6 @@ class MyPlugin:
         option           = params["option"]
         X               = params["x0"]
         Y               = params["y0"]
-        D                = params["D"]
         d                = params["d_box"]
         K                = params["K"]
         KF               = params["KF"]
@@ -217,12 +213,6 @@ class MyPlugin:
         MAXDIST          = params["MAXDIST"]
 
         # Constants & Toggles (tab 3)
-        CREATE_INTERFACE = params["CREATE_INTERFACE"]
-        TESTIDX          = params["TESTIDX"]
-        read             = params["READ"]
-        Main_Algo        = params["MAIN_ALGO"]
-        Select           = params["SELECT"]
-        Save             = params["SAVE"]
 
         tolerance        = params["tolerance"]
         KDTREE_DIST_UPPERBOUND= params["KDTREE_DIST_UPPERBOUND"]
@@ -253,7 +243,10 @@ class MyPlugin:
         import pickle
         import sys
         import datatable as dt 
-
+        ##############################################
+        #    Parameters       #  
+        ##############################################
+        
         ############################################################################################
         #    This is related to get functions from Functions directory     #  
         ############################################################################################
@@ -308,8 +301,17 @@ class MyPlugin:
         flammable_path = os.path.join(INPUT_FOLDER, inputFlamm)  # Full path to flammable file
         urban_path = os.path.join(INPUT_FOLDER, urban_file)  # Full path to urban file
         
+        ##############################################
+        #    Parameters     #
+        ##############################################
 
-        
+        CREATE_INTERFACE = True   # Create even if file exists
+        TESTIDX = True            # Test specific indices
+        read = True               # Run the reading processing part of the script
+        Main_Algo = True          # Run the main algorithm part of the script
+        Select = True             # Run the select part of the script
+        Save = True           # Save outputs
+
         ##############################################
         #    Test specific location     #
         ##############################################
@@ -340,8 +342,8 @@ class MyPlugin:
         if read:
             if CREATE_INTERFACE or TESTIDX:
                 # Process Flammable Data
-                flam = gpd.read_file(flammable_path) 
-                flam = promote_to_multipolygon(flam)  
+                flam1 = gpd.read_file(flammable_path) 
+                flam = promote_to_multipolygon(flam1)  
                 if TESTIDX:
                     flam =process_flammables(flam, BOX) #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> "clip"
                 flam["idflam"] = range(1, len(flam) + 1)
@@ -377,8 +379,8 @@ class MyPlugin:
                 mat_flam = clean_and_reindex(mat_flam,"idx_part_flam","idx_vert_flam") # Remove duplicates
                 
                 # Process Urban Data 
-                urb = gpd.read_file(urban_path) # now, this contains the original polygons plus the buffers, which can be selected with 'layer'="Buffered"
-                urb = urb.to_crs(flam.crs)
+                urb1 = gpd.read_file(urban_path) # now, this contains the original polygons plus the buffers, which can be selected with 'layer'="Buffered"
+                urb = urb1.to_crs(flam.crs)
                 if TESTIDX:
                     urb = process_flammables(urb,BOX)  #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> "clip"
                 urb['idurb'] = range(1, len(urb) + 1)   
@@ -646,7 +648,17 @@ class MyPlugin:
             print(output_path33)
             xydDT_df.to_csv(output_path33, sep=',', index=False)
 
+        start = time.time()
+        # -------------------------------------------------------------
+        # 1.5) Show status messages
+        # -------------------------------------------------------------
 
+        # Show initial "starting" message
+        iface.messageBar().pushMessage("🟡 Starting", "Preparing to load layers...", level=0, duration=3)
+
+        # Show persistent "loading..." message
+        msg = iface.messageBar().createMessage("Loading layers...", "Please wait")
+        iface.messageBar().pushWidget(msg, level=0)
         # -------------------------------------------------------------
         # 1) Prepare your data & CRS
         # -------------------------------------------------------------
@@ -658,13 +670,42 @@ class MyPlugin:
         crs_str = f"EPSG:{crs_code}"
 
         # -------------------------------------------------------------
-        # 2) Create all layers (don’t add yet)
+        # 2) Create all layers 
         # -------------------------------------------------------------
         interface_pts_layer = load_datatable_as_point_layer(interface_pts_df, "Interface_Points", crs_code, "x", "y")
         flam_pt_layer = load_datatable_as_point_layer(matFlamDF, "Flam_Vertices", crs_code, "x", "y")
         urb_pt_layer = load_datatable_as_point_layer(matUrbDF, "Urb_Vertices", crs_code, "x", "y")
         flam_poly = create_vector_layer_from_gdf(flam, "Flammable_Polygons", crs_str)
         urb_poly = create_vector_layer_from_gdf(urb, "Urban_Polygons", crs_str)
+        flam_layer=create_vector_layer_from_gdf(flam1, "flammable_Area", crs_str)
+        urb_layer=create_vector_layer_from_gdf(urb1, "Urban_Area", crs_str)
+        # -------------------------------------------------------------
+        # 2.1) Style layers
+        # -------------------------------------------------------------
+        # Flammable area – light red 
+        flam_layer.renderer().symbol().setColor(QColor("#fcae91"))  # light red
+        flam_layer.renderer().symbol().setOpacity(0.5)
+        
+        # Flammable polygons – light red and semi-transparent
+        flam_poly.renderer().symbol().setColor(QColor("#fcae91"))  # light red
+        flam_poly.renderer().symbol().setOpacity(0.9)
+
+        # Flammable points – red
+        flam_symbol = flam_pt_layer.renderer().symbol()
+        flam_symbol.setColor(QColor("red"))
+        flam_symbol.setSize(2.0)
+        # Urban area – light blue and semi-transparent
+        urb_layer.renderer().symbol().setColor(QColor("#a6bddb"))  # light blue
+        urb_layer.renderer().symbol().setOpacity(0.2)
+        
+        # Urban polygons – light blue and semi-transparent
+        urb_poly.renderer().symbol().setColor(QColor("#a6bddb"))  # light blue
+        urb_poly.renderer().symbol().setOpacity(0.9)
+
+        # Urban points – dark blue
+        urb_symbol = urb_pt_layer.renderer().symbol()
+        urb_symbol.setColor(QColor("darkblue"))
+        urb_symbol.setSize(2.0)
 
         # -------------------------------------------------------------
         # 3) Helper to add & position each layer
@@ -695,15 +736,16 @@ class MyPlugin:
         osm_layer = QgsRasterLayer(osm_uri, "OpenStreetMap", "wms")
 
         # -------------------------------------------------------------
-        # 5) Add your polygon & point layers
+        # 5) Add all layers to the project
         # -------------------------------------------------------------
+        add_layer(flam_layer, "Flammable_layer", "bottom")
+        add_layer(urb_layer, "Urban_layer", "bottom")
         add_layer(flam_poly, "Flammable_Polygons", "bottom")
         add_layer(urb_poly, "Urban_Polygons", "bottom")
         add_layer(osm_layer, "OpenStreetMap", "bottom")
         add_layer(flam_pt_layer, "Flam_Vertices", "top")
         add_layer(urb_pt_layer, "Urb_Vertices", "top")
         add_layer(interface_pts_layer, "Interface_Points", "top")
-
         # -------------------------------------------------------------
         # 5.5) Style interface_pts_layer (interface == 1)
         # -------------------------------------------------------------
@@ -806,7 +848,6 @@ class MyPlugin:
             sequences.append(current_sequence)
             types.append(type_)
 
-        print(f"✅ Extracted {len(sequences)} line segments from Interface_Points.")
 
         # -------------------------------------------------------------
         # 7) Create and style line layer
@@ -863,3 +904,5 @@ class MyPlugin:
         # -------------------------------------------------------------
         self.iface.mapCanvas().setExtent(line_layer.extent())
         self.iface.mapCanvas().refresh()
+        iface.messageBar().clearWidgets()
+        iface.messageBar().pushMessage("Layers loaded", f"Took {time.time() - start:.2f} seconds", level=0, duration=5)
